@@ -97,6 +97,7 @@ from manim.utils.sounds import *
 from manim.utils.space_ops import *
 from manim.utils.tex import *
 from manim.utils.tex_templates import *
+from manim.mobject.opengl.opengl_surface import *
 
 try:
     from IPython import get_ipython
