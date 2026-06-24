@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from manim import *
+from manim.mobject.opengl.opengl_surface import OpenGLSurface
 from manim.utils.testing.frames_comparison import frames_comparison
 
 __module_test__ = "threed"
@@ -148,6 +149,13 @@ def test_SurfaceColorscale(scene: Scene) -> None:
         axes=axes, colorscale=[BLUE, GREEN, PURE_YELLOW, ORANGE, RED]
     )
     scene.add(axes, trig_plane)
+
+
+def test_OpenGLSurface_set_opacity() -> None:
+    surface = OpenGLSurface(lambda u, v: np.array([u, v, 0]))
+    surface.set_opacity(0.25)
+
+    assert np.isclose(surface.get_opacity(), 0.25)
 
 
 @frames_comparison

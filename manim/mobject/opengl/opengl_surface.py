@@ -23,7 +23,6 @@ if TYPE_CHECKING:
 __all__ = ["OpenGLSurface", "OpenGLTexturedSurface"]
 
 
-# TODO: Those will not work in the current state we will have to think about a different method to render these with shaders in our current pipeline
 class OpenGLSurface(OpenGLMobject):
     r"""Creates a Surface.
 
@@ -94,6 +93,9 @@ class OpenGLSurface(OpenGLMobject):
         # can crop up in the shaders.
         self.epsilon = epsilon
 
+        self.flat_stroke = False
+        self.joint_type = LineJointType.ROUND
+
         self.triangle_indices = None
         super().__init__(
             color=color,
@@ -152,6 +154,49 @@ class OpenGLSurface(OpenGLMobject):
 
     def get_triangle_indices(self):
         return self.triangle_indices
+
+    def set_opacity(self, opacity, recurse=True):
+        super().set_opacity(opacity, recurse=False)
+        if recurse:
+            for submob in self.submobjects:
+                submob.set_opacity(opacity, recurse=True)
+        return self
+
+    def get_surface_points(self) -> Point3D_Array:
+        points = self.points
+        return points[: len(points) // 3]
+
+    def interpolate_color(self, mobject1, mobject2, alpha):
+        attrs = [
+            "color",
+            "reflectiveness",
+            "shadow",
+            "gloss",
+        ]
+
+        def interp(obj1: Any, obj2: Any, alpha: float) -> Any:
+            result = None
+            if isinstance(obj1, ManimColor) or isinstance(obj2, ManimColor):
+                result = obj1.interpolate(obj2, alpha)
+            else:
+                result = interpolate(obj1, obj2, alpha)
+            return result
+
+        for attr in attrs:
+            if alpha == 1.0:
+                setattr(self, attr, getattr(mobject2, attr))
+                continue
+
+            attr1 = getattr(mobject1, attr)
+            attr2 = getattr(mobject2, attr)
+            if isinstance(attr1, list) or isinstance(attr2, list):
+                result = [
+                    interp(elem1, elem2, alpha)
+                    for elem1, elem2 in zip(attr1, attr2, strict=False)
+                ]
+            else:
+                result = interp(attr1, attr2, alpha)
+            setattr(self, attr, result)
 
     def get_surface_points_and_nudged_points(
         self,

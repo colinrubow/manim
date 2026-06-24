@@ -7,6 +7,8 @@ import numpy as np
 from manim._config import logger
 from manim.mobject.mobject import InvisibleMobject
 from manim.mobject.opengl.opengl_mobject import OpenGLMobject
+from manim.mobject.opengl.opengl_surface import OpenGLSurface
+from manim.mobject.opengl.opengl_surface import OpenGLTexturedSurface
 from manim.mobject.opengl.opengl_vectorized_mobject import OpenGLVMobject
 from manim.mobject.types.image_mobject import ImageMobject
 
@@ -29,6 +31,7 @@ class Renderer(ABC):
 
     def __init__(self) -> None:
         self.capabilities = [
+            (OpenGLSurface, self.render_mesh),
             (OpenGLVMobject, self.render_vmobject),
             (ImageMobject, self.render_image),
         ]
@@ -56,6 +59,18 @@ class Renderer(ABC):
         self.post_render()
 
     def render_mobject(self, mob: OpenGLMobject) -> None:
+        if isinstance(mob, OpenGLTexturedSurface):
+            if not isinstance(mob, InvisibleMobject):
+                warning_message = (
+                    f"{type(mob).__name__} cannot be rendered by {type(self).__name__}. "
+                    "Attempting to render its submobjects..."
+                )
+                if warning_message not in self._unsupported_mob_warnings:
+                    logger.warning(warning_message)
+                    self._unsupported_mob_warnings.add(warning_message)
+            for submob in mob.submobjects:
+                self.render_mobject(submob)
+            return
         for mob_cls, render_func in self.capabilities:
             if isinstance(mob, mob_cls):
                 render_func(mob)  # type: ignore[operator]

@@ -2383,7 +2383,7 @@ class OpenGLMobject:
         if color is not None:
             self.color = ManimColor.parse(color)
         if opacity is not None:
-            self.color.opacity(opacity)
+            self.color = self.color.opacity(opacity)
         if recurse:
             for submob in self.submobjects:
                 submob.set_color(color, recurse=True)

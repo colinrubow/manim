@@ -8,6 +8,7 @@ import manim.utils.color.core as c
 import manim.utils.color.manim_colors as color
 from manim import config, logger
 from manim.camera.camera import Camera
+from manim.mobject.opengl.opengl_surface import OpenGLSurface
 from manim.mobject.opengl.opengl_vectorized_mobject import OpenGLVMobject
 from manim.renderer.buffers.buffer import STD140BufferFormat
 from manim.renderer.opengl_shader_program import load_shader_program_by_folder
@@ -335,7 +336,58 @@ class OpenGLRenderer(Renderer, RendererProtocol):
         raise NotImplementedError
 
     def render_mesh(self, mob) -> None:
-        raise NotImplementedError
+        if not isinstance(mob, OpenGLSurface):
+            raise TypeError()
+
+        surfaces = [
+            sub
+            for sub in mob.family_members_with_points()
+            if isinstance(sub, OpenGLSurface)
+        ]
+        if len(surfaces) == 0:
+            return
+
+        self.stencil_buffer_fbo.use()
+        self.stencil_buffer_fbo.clear()
+        self.render_target_fbo.use()
+
+        self.ctx.enable(gl.BLEND)
+        self.ctx.blend_func = (
+            gl.SRC_ALPHA,
+            gl.ONE_MINUS_SRC_ALPHA,
+            gl.ONE,
+            gl.ONE,
+        )
+
+        def enable_depth(sub) -> bool:
+            if sub.depth_test:
+                self.ctx.enable(gl.DEPTH_TEST)
+                if sub.get_opacity() != 1.0:
+                    self.render_target_fbo.depth_mask = False
+                    return True
+            else:
+                self.ctx.disable(gl.DEPTH_TEST)
+            return False
+
+        for counter, sub in enumerate(surfaces):
+            reenable_depth_mask = enable_depth(sub)
+            uniforms = {"index": (counter + 1) / len(surfaces)}
+
+            self.ctx.copy_framebuffer(self.stencil_texture_fbo, self.stencil_buffer_fbo)
+            self.stencil_texture.use(0)
+            self.vmobject_fill_program["stencil_texture"] = 0
+
+            GLSurfaceManager.init_render_data(sub)
+            ubo_mobject.write(GLVMobjectManager.read_uniforms(sub))
+            ubo_mobject.bind()
+            ProgramManager.write_uniforms(self.vmobject_fill_program, uniforms)
+            self.render_program(
+                self.vmobject_fill_program,
+                GLSurfaceManager.get_fill_shader_data(sub),
+                sub.renderer_data.vert_indices,
+            )
+            if reenable_depth_mask:
+                self.render_target_fbo.depth_mask = True
 
     def render_vmobject(self, mob: OpenGLVMobject) -> None:
         self.stencil_buffer_fbo.use()
@@ -613,4 +665,35 @@ class GLVMobjectManager:
         # fill_data["orientation"] = mob.renderer_data.orientation
         fill_data["unit_normal"] = mob.renderer_data.normals
         fill_data["vert_index"] = np.reshape(range(len(mob.points)), (-1, 1))
+        return fill_data
+
+
+class GLSurfaceManager:
+    @staticmethod
+    def init_render_data(mob: OpenGLSurface):
+        logger.debug("Initializing GLSurfaceRenderData")
+        mob.renderer_data = GLRenderData()
+
+        surface_points = mob.get_surface_points()
+        points_length = len(surface_points)
+
+        fill_color = np.array([mob.get_color().to_rgba()])
+        mob.renderer_data.fill_rgbas = prepare_array(fill_color, points_length)
+        mob.renderer_data.stroke_rgbas = mob.renderer_data.fill_rgbas.copy()
+        mob.renderer_data.stroke_widths = np.zeros((points_length, 1))
+        mob.renderer_data.normals = mob.get_unit_normals()
+        mob.renderer_data.vert_indices = mob.get_triangle_indices()
+        mob.renderer_data.bounding_box = GLVMobjectManager.compute_bounding_box(mob)
+
+    @staticmethod
+    def get_fill_shader_data(mob: OpenGLSurface) -> np.ndarray:
+        if not isinstance(mob.renderer_data, GLRenderData):
+            raise TypeError()
+
+        surface_points = mob.get_surface_points()
+        fill_data = np.zeros(len(surface_points), dtype=fill_dtype)
+        fill_data["point"] = surface_points
+        fill_data["color"] = mob.renderer_data.fill_rgbas
+        fill_data["unit_normal"] = mob.renderer_data.normals
+        fill_data["vert_index"] = np.reshape(range(len(surface_points)), (-1, 1))
         return fill_data
