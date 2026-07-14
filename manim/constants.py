@@ -83,12 +83,16 @@ __all__ = [
     "TIK_PYRAMID",
     "TIK_DIAMETER",
     "TIK_OCTAGON",
+    "TIK_RADIUS",
+    "TIK_CONE_AXIS",
 ]
 
 # Tikz shapes
 TIK_CONE = r'\tikz[baseline,scale=0.2]{\draw(-1,0) -- (0, 1.55) -- (1,0); \draw(-1,0) arc (-180:0:1 and 0.35);}'
+TIK_CONE_AXIS = r'\tikz[baseline,scale=0.2]{\draw(-1,0) -- (0, 1.55) -- (1,0); \draw(-1,0) arc (-180:0:1 and 0.35); \draw(0, 1.55) -- (0, 0);}'
 TIK_CIRCLE = r'\tikz[baseline,scale=0.2]{\draw(0,0.4) circle (1)}'
 TIK_DIAMETER = r'\tikz[baseline,scale=0.2]{\draw(0,0.4) circle (1); \draw(-1,0.4) -- (1,0.4);}'
+TIK_RADIUS = r'\tikz[baseline,scale=0.2]{\draw(0,0.4) circle (1); \draw(-1,0.4) -- (0,0.4);}'
 TIK_CYLINDER = r'\tikz[baseline,scale=0.2]{\draw(-1,-0.15) -- (-1, 1.4); \draw(0, 1.4) ellipse (1 and 0.35); \draw(1, 1.4) -- (1, -.15); \draw(-1,-0.15) arc (-180:0:1 and 0.35);}'
 TIK_CUBE = r'\tikz[baseline,scale=0.2]{\draw(-1,0) -- (-1, 1.05) -- (0, 1.4) -- (1, 1.05) -- (1, 0) -- (0, -0.35) -- (-1, 0);\draw(-1, 1.05) -- (0, 0.7) -- (1, 1.05);\draw(0, 0.7) -- (0, -0.35);}'
 TIK_SQUARE = r'\tikz[baseline,scale=0.2]{\draw(-1, -0.5) -- (-1, 1.5) -- (1, 1.5) -- (1, -0.5) -- cycle}'
